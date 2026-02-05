@@ -175,9 +175,39 @@ def main(dry_run=False):
             if not dry_run:
                 send_notification(msg)
 
+import time
+from apscheduler.schedulers.blocking import BlockingScheduler
+from apscheduler.triggers.cron import CronTrigger
+import pytz
+
+# ... (rest of the imports and constants stay the same)
+
+def run_job():
+    main(dry_run=False)
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dry-run", action="store_true", help="Run without sending messages or updating sheet")
+    parser.add_argument("--dry-run", action="store_true", help="Run once without sending messages")
+    parser.add_argument("--now", action="store_true", help="Run the job immediately and exit")
     args = parser.parse_args()
     
-    main(dry_run=args.dry_run)
+    if args.now or args.dry_run:
+        main(dry_run=args.dry_run)
+    else:
+        # Schedule the job for 6:00 PM (18:00) Los Angeles time
+        scheduler = BlockingScheduler()
+        la_tz = pytz.timezone('America/Los_Angeles')
+        
+        trigger = CronTrigger(
+            hour=18, 
+            minute=0, 
+            timezone=la_tz
+        )
+        
+        scheduler.add_job(run_job, trigger)
+        
+        print(f"Scheduler started. Waiting for next run at 6:00 PM LA Time...")
+        try:
+            scheduler.start()
+        except (KeyboardInterrupt, SystemExit):
+            pass
