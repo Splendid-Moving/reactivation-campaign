@@ -1,10 +1,6 @@
 import os
 import argparse
-import time
 from datetime import datetime, timedelta
-from apscheduler.schedulers.blocking import BlockingScheduler
-from apscheduler.triggers.cron import CronTrigger
-import pytz
 from utils import GoogleSheetClient, send_ghl_message, send_notification, get_ghl_contact
 
 # Configuration
@@ -173,26 +169,6 @@ def run_job():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true", help="Run once without sending messages")
-    parser.add_argument("--now", action="store_true", help="Run the job immediately and exit")
     args = parser.parse_args()
     
-    if args.now or args.dry_run:
-        main(dry_run=args.dry_run)
-    else:
-        # Schedule the job for 6:00 PM (18:00) Los Angeles time
-        scheduler = BlockingScheduler()
-        la_tz = pytz.timezone('America/Los_Angeles')
-        
-        trigger = CronTrigger(
-            hour=18, 
-            minute=0, 
-            timezone=la_tz
-        )
-        
-        scheduler.add_job(run_job, trigger)
-        
-        print(f"Scheduler started. Waiting for next run at 6:00 PM LA Time...")
-        try:
-            scheduler.start()
-        except (KeyboardInterrupt, SystemExit):
-            pass
+    main(dry_run=args.dry_run)
