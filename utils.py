@@ -2,11 +2,15 @@ import os
 import json
 import base64
 import requests
+from dotenv import load_dotenv, find_dotenv
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from datetime import datetime
 
 # Environment Variables
+# Automatically find .env file in current or parent directories
+load_dotenv(find_dotenv())
+
 GHL_ACCESS_TOKEN = os.getenv("GHL_ACCESS_TOKEN")
 GHL_LOCATION_ID = os.getenv("GHL_LOCATION_ID")
 SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")

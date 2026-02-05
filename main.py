@@ -20,15 +20,17 @@ FIRST_NAME_COL_IDX = 1
 
 # Messages
 EMAIL_SUBJECT = "Important Update"
-EMAIL_BODY_TEMPLATE = """Hi {first_name},
+EMAIL_BODY_TEMPLATE = """<div style="font-size: 16px; font-family: Arial, sans-serif; color: #333;">
+<p>Hi {first_name},</p>
 
-It’s been a while since we saw you! I was updating our client records and realized you qualify for our "Returning Client" status.
+<p>It’s been a while since we saw you! I was updating our client records and realized you qualify for our "Returning Client" status.</p>
 
-That means if you move with us again, you automatically get **5% off** your quote.
+<p>That means if you move with us again, you automatically get <strong>5% off</strong> your quote.</p>
 
-We just opened up a few spots for estimates next week. Are you moving soon (or know someone who is)?
+<p>We just opened up a few spots for estimates next week. Are you moving soon (or know someone who is)?</p>
 
-Best, Jim"""
+<p>Best,<br>Jim</p>
+</div>"""
 
 SMS_BODY_TEMPLATE = """Hey {first_name}, Jim here from Splendid Moving.
 
