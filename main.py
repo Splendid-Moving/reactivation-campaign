@@ -1,6 +1,10 @@
 import os
 import argparse
+import time
 from datetime import datetime, timedelta
+from apscheduler.schedulers.blocking import BlockingScheduler
+from apscheduler.triggers.cron import CronTrigger
+import pytz
 from utils import GoogleSheetClient, send_ghl_message, send_notification, get_ghl_contact
 
 # Configuration
@@ -19,7 +23,7 @@ CONTACT_ID_COL_IDX = 7
 FIRST_NAME_COL_IDX = 1
 
 # Messages
-EMAIL_SUBJECT = "Important Update" # Placeholder, update if needed
+EMAIL_SUBJECT = "Important Update"
 EMAIL_BODY_TEMPLATE = """Hi {first_name},
 
 It’s been a while since we saw you! I was updating our client records and realized you qualify for our "Returning Client" status.
@@ -57,7 +61,6 @@ def main(dry_run=False):
         print("No rows found.")
         return
 
-    headers = rows[0]
     data_rows = rows[1:]
     
     # 1. Check for Active Batch (Status = 'Email Sent')
@@ -71,13 +74,6 @@ def main(dry_run=False):
         processed_count = 0
         
         for row_idx in active_batch_indices:
-            # Re-read row to ensure fresh data (though in this script run, memory is fine)
-            # Row index in 'rows' list is different from sheet row index
-            # data_rows[row_idx - 1] corresponds to row_index in sheet if we start at 0
-            
-            # NOTE: row_idx passed here is index in 'data_rows' + header offset. 
-            # So actual sheet row index (0-based) is row_idx. 
-            
             row = rows[row_idx]
             contact_id = row[CONTACT_ID_COL_IDX] if len(row) > CONTACT_ID_COL_IDX else None
             date_sent_str = get_date_sent(row)
@@ -87,10 +83,6 @@ def main(dry_run=False):
                 print(f"Row {row_idx}: Missing Contact ID. Skipping.")
                 continue
 
-            # Safety Check: Verify contact still exists/wasn't deleted from sheet
-            # (Implicitly true since we are iterating the sheet, but logic requires we act only if it's there. 
-            # If user deleted row, it wouldn't be in 'rows'. )
-            
             if not date_sent_str:
                 print(f"Row {row_idx}: Status is 'Email Sent' but no date found. Skipping.")
                 continue
@@ -174,13 +166,6 @@ def main(dry_run=False):
             print(msg)
             if not dry_run:
                 send_notification(msg)
-
-import time
-from apscheduler.schedulers.blocking import BlockingScheduler
-from apscheduler.triggers.cron import CronTrigger
-import pytz
-
-# ... (rest of the imports and constants stay the same)
 
 def run_job():
     main(dry_run=False)
