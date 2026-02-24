@@ -107,7 +107,10 @@ def main(dry_run=False):
                     client.update_status(TAB_NAME, row_idx, STATUS_COL_IDX, "Done")
                     processed_count += 1
                 except Exception as e:
-                    print(f"Failed to process row {row_idx}: {e}")
+                    print(f"Failed to send SMS for row {row_idx}: {e}")
+                    # Mark as failed so it doesn't block the pipeline
+                    client.update_status(TAB_NAME, row_idx, STATUS_COL_IDX, "SMS Failed")
+                    print(f"Row {row_idx}: Marked as 'SMS Failed' to unblock pipeline.")
             else:
                 processed_count += 1
 
@@ -155,7 +158,10 @@ def main(dry_run=False):
                     client.update_status(TAB_NAME, row_idx, STATUS_COL_IDX, "Email Sent", DATE_SENT_COL_IDX, current_time)
                     new_batch_count += 1
                 except Exception as e:
-                    print(f"Failed to process row {row_idx}: {e}")
+                    print(f"Failed to send Email for row {row_idx}: {e}")
+                    # Mark as failed so it doesn't block the pipeline
+                    client.update_status(TAB_NAME, row_idx, STATUS_COL_IDX, "Email Failed")
+                    print(f"Row {row_idx}: Marked as 'Email Failed' to unblock pipeline.")
             else:
                 new_batch_count += 1
                 
