@@ -6,8 +6,8 @@ from utils import GoogleSheetClient, send_ghl_message, send_notification, get_gh
 # Configuration
 SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
 TAB_NAME = "Sheet1"
-BATCH_SIZE = 20
-DELAY_HOURS = 48
+BATCH_SIZE = 30
+DELAY_HOURS = 24
 
 # Column Indices (Assumed based on 'get_rows' output: 
 # ['Full name', 'First name', 'Email', 'Phone', 'Move date', 'Movers', 'Rate', 'Contact ID', 'Status']
