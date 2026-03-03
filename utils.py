@@ -92,21 +92,47 @@ class GoogleSheetClient:
     def __init__(self, spreadsheet_id):
         self.service = get_sheets_service()
         self.spreadsheet_id = spreadsheet_id
+        self._pending_updates = []  # Collect updates for batch write
         
     def read_all_rows(self, tab_name="Sheet1"):
         result = self.service.spreadsheets().values().get(
             spreadsheetId=self.spreadsheet_id, range=f"{tab_name}!A:Z"
         ).execute()
         return result.get('values', [])
+
+    def _col_letter(self, col_index):
+        return chr(ord('A') + col_index)
+
+    def queue_update(self, tab_name, row_index, col_index, value):
+        """Queues a cell update for batch writing. row_index is 0-based."""
+        col_letter = self._col_letter(col_index)
+        cell_range = f"{tab_name}!{col_letter}{row_index + 1}"
+        self._pending_updates.append({
+            'range': cell_range,
+            'values': [[value]]
+        })
+
+    def flush_updates(self):
+        """Writes all queued updates in a single batchUpdate API call."""
+        if not self._pending_updates:
+            return
         
+        body = {
+            'valueInputOption': 'RAW',
+            'data': self._pending_updates
+        }
+        self.service.spreadsheets().values().batchUpdate(
+            spreadsheetId=self.spreadsheet_id,
+            body=body
+        ).execute()
+        
+        count = len(self._pending_updates)
+        self._pending_updates = []
+        print(f"Flushed {count} cell updates in 1 API call.")
+
     def update_cell(self, tab_name, row_index, col_index, value):
-        """Updates a single cell. row_index is 0-based, col_index is 0-based."""
-        # Convert row/col to A1 notation
-        # Start row is row_index + 1
-        # Col A=0, B=1, ... J=9 (Date Sent is likely J if Status is I?)
-        
-        # Helper to convert col index to letter
-        col_letter = chr(ord('A') + col_index)
+        """Updates a single cell immediately. Use queue_update + flush_updates for bulk ops."""
+        col_letter = self._col_letter(col_index)
         cell_range = f"{tab_name}!{col_letter}{row_index + 1}"
         
         body = {'values': [[value]]}
@@ -118,7 +144,7 @@ class GoogleSheetClient:
         ).execute()
 
     def update_status(self, tab_name, row_index, status_col_index, status, date_col_index=None, date_val=None):
-        """Updates status and optionally the date."""
-        self.update_cell(tab_name, row_index, status_col_index, status)
+        """Queues status (and optional date) for batch writing."""
+        self.queue_update(tab_name, row_index, status_col_index, status)
         if date_col_index is not None and date_val is not None:
-             self.update_cell(tab_name, row_index, date_col_index, date_val)
+             self.queue_update(tab_name, row_index, date_col_index, date_val)

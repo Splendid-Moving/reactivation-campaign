@@ -114,6 +114,10 @@ def main(dry_run=False):
             else:
                 processed_count += 1
 
+        # Flush all queued sheet updates in a single API call
+        if not dry_run:
+            client.flush_updates()
+
         if processed_count > 0:
             msg = f"Completed SMS batch for {processed_count} contacts."
             print(msg)
@@ -164,7 +168,11 @@ def main(dry_run=False):
                     print(f"Row {row_idx}: Marked as 'Email Failed' to unblock pipeline.")
             else:
                 new_batch_count += 1
-                
+
+        # Flush all queued sheet updates in a single API call
+        if not dry_run:
+            client.flush_updates()
+
         if new_batch_count > 0:
             msg = f"Started new batch. Sent Email to {new_batch_count} contacts."
             print(msg)
