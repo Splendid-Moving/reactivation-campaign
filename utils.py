@@ -27,9 +27,13 @@ HEADERS = {
 }
 
 def decode_service_account():
-    """Decodes the Base64 Service Account JSON."""
+    """Decodes the Base64 Service Account JSON or reads from local file."""
     if not SERVICE_ACCOUNT_JSON:
-        raise ValueError("Missing SERVICE_ACCOUNT_JSON environment variable.")
+        # Fallback to local file if it exists
+        if os.path.exists("service_account.json"):
+            with open("service_account.json", "r") as f:
+                return json.load(f)
+        raise ValueError("Missing SERVICE_ACCOUNT_JSON environment variable and service_account.json file.")
     
     # Check if it's already a dict (development fallback) or needs decoding
     try:
