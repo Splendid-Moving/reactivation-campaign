@@ -72,6 +72,31 @@ def main(dry_run=False):
             print(f"Row {row_idx}: Missing Contact ID. Skipping.")
             continue
             
+        print(f"Row {row_idx}: Process contact {first_name} ({contact_id})")
+        
+        # Check for future move date
+        contact = get_ghl_contact(contact_id)
+        if contact:
+            custom_fields = contact.get("customFields", [])
+            move_date_str = None
+            for field in custom_fields:
+                if field.get("id") == "VuatzebiX5qPrzGjl4d4":
+                    move_date_str = field.get("value")
+                    break
+            
+            if move_date_str:
+                try:
+                    move_date = datetime.strptime(move_date_str, "%Y-%m-%d").date()
+                    if move_date > datetime.now().date():
+                        print(f"Row {row_idx}: Skipped. Contact has a future move scheduled ({move_date_str}).")
+                        if not dry_run:
+                            client.update_status(TAB_NAME, row_idx, STATUS_COL_IDX, "Skipped (Future Move)")
+                        continue
+                except ValueError:
+                    print(f"Row {row_idx}: Could not parse move date '{move_date_str}'. Proceeding normally.")
+        else:
+            print(f"Row {row_idx}: Could not fetch contact details from GHL. Proceeding normally.")
+            
         print(f"Row {row_idx}: Sending SMS to {first_name} ({contact_id})")
         msg_body = SMS_BODY_TEMPLATE.format(first_name=first_name)
         
