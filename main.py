@@ -54,16 +54,18 @@ def main(dry_run=False):
         status = get_status(row)
         if status == "New" or status == "":
             new_batch_indices.append(i + 1) # +1 for header
-            if len(new_batch_indices) >= BATCH_SIZE:
-                break
     
     if not new_batch_indices:
         print("No new contacts found to process.")
         return
         
-    print(f"Targeting {len(new_batch_indices)} new contacts.")
+    print(f"Found {len(new_batch_indices)} possible new contacts. Will attempt to send {BATCH_SIZE} messages.")
     
     for row_idx in new_batch_indices:
+        if new_batch_count >= BATCH_SIZE:
+            print(f"Reached daily target of {BATCH_SIZE} sent messages.")
+            break
+            
         row = rows[row_idx]
         contact_id = row[CONTACT_ID_COL_IDX] if len(row) > CONTACT_ID_COL_IDX else None
         first_name = row[FIRST_NAME_COL_IDX] if len(row) > FIRST_NAME_COL_IDX else "there"
@@ -74,26 +76,53 @@ def main(dry_run=False):
             
         print(f"Row {row_idx}: Process contact {first_name} ({contact_id})")
         
-        # Check for future move date
+        # Check GHL fields: Move Date > 6 months ago, and Bad Move is not checked
         contact = get_ghl_contact(contact_id)
         if contact:
             custom_fields = contact.get("customFields", [])
             move_date_str = None
-            for field in custom_fields:
-                if field.get("id") == "VuatzebiX5qPrzGjl4d4":
-                    move_date_str = field.get("value")
-                    break
+            bad_move_value = None
             
+            for field in custom_fields:
+                if field.get("id") == "VuatzebiX5qPrzGjl4d4": # Move Date
+                    move_date_str = field.get("value")
+                elif field.get("id") == "cf9E3HWw8Qnoh6Xze7ph": # Mark if the move went bad
+                    bad_move_value = field.get("value")
+            
+            # 1. Check if 'Bad Move' is checked
+            is_bad_move = False
+            if isinstance(bad_move_value, list):
+                # Filter out empty strings
+                meaningful_values = [v for v in bad_move_value if isinstance(v, str) and v.strip()]
+                if len(meaningful_values) > 0:
+                    is_bad_move = True
+            elif isinstance(bad_move_value, str) and bad_move_value.strip().lower() not in ["", "false", "no"]:
+                is_bad_move = True
+                
+            if is_bad_move:
+                print(f"Row {row_idx}: Skipped. Contact has 'bad move' checked.")
+                if not dry_run:
+                    client.update_status(TAB_NAME, row_idx, STATUS_COL_IDX, "Skipped (Bad Move)")
+                continue
+
+            # 2. Check if Move Date is at least 6 months ago (180 days)
             if move_date_str:
                 try:
                     move_date = datetime.strptime(move_date_str, "%Y-%m-%d").date()
-                    if move_date > datetime.now().date():
-                        print(f"Row {row_idx}: Skipped. Contact has a future move scheduled ({move_date_str}).")
+                    six_months_ago = datetime.now().date() - timedelta(days=180)
+                    if move_date > six_months_ago:
+                        print(f"Row {row_idx}: Skipped. Move date ({move_date_str}) is not at least 6 months ago.")
                         if not dry_run:
-                            client.update_status(TAB_NAME, row_idx, STATUS_COL_IDX, "Skipped (Future Move)")
+                            client.update_status(TAB_NAME, row_idx, STATUS_COL_IDX, "Skipped (Recent/Future Move)")
                         continue
                 except ValueError:
                     print(f"Row {row_idx}: Could not parse move date '{move_date_str}'. Proceeding normally.")
+            else:
+                # If there's no move date in GHL, skip just to be safe according to requirements
+                print(f"Row {row_idx}: Skipped. Contact has no move date set in GHL.")
+                if not dry_run:
+                    client.update_status(TAB_NAME, row_idx, STATUS_COL_IDX, "Skipped (No Move Date)")
+                continue
         else:
             print(f"Row {row_idx}: Could not fetch contact details from GHL. Proceeding normally.")
             
