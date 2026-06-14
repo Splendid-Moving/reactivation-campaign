@@ -58,7 +58,7 @@ def run_job(dry_run=False):
             break
 
         contact_id = contact.get("id")
-        first_name = contact.get("firstName") or "there"
+        first_name = (contact.get("firstName") or "there").title()
 
         # Cheap filters from list API
         custom_fields = contact.get("customFields", [])
